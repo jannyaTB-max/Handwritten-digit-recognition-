@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered handwriting digit recognition tool using a Convolutional Neural Network trained on MNIST dataset directly in your browser.">
+    <title>Neural Digit — AI Handwriting Recognition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect x="2" y="2" width="28" height="28" rx="8" stroke="url(#logoGrad)" stroke-width="2.5"/>
+                        <path d="M10 22V14C10 11.7909 11.7909 10 14 10H18C20.2091 10 22 11.7909 22 14V22" stroke="url(#logoGrad)" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="16" cy="18" r="2" fill="url(#logoGrad)"/>
+                        <defs>
+                            <linearGradient id="logoGrad" x1="2" y1="2" x2="30" y2="30">
+                                <stop stop-color="#667eea"/>
+                                <stop offset="1" stop-color="#764ba2"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Neural Digit</h1>
+                    <p class="subtitle">AI-Powered Handwriting Recognition</p>
+                </div>
+            </div>
+            <div class="header-badge" id="modelStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Model Not Trained</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left: Drawing Area -->
+            <section class="card drawing-section">
+                <div class="card-header">
+                    <h2>Draw a Digit</h2>
+                    <p class="card-subtitle">Use your mouse or touch to draw digits (single or multi-digit)</p>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="drawCanvas" width="280" height="280"></canvas>
+                    <div class="canvas-overlay" id="canvasOverlay">
+                        <span>Draw here</span>
+                    </div>
+                </div>
+                <div class="canvas-controls">
+                    <button class="btn btn-secondary" id="clearBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        </svg>
+                        Clear
+                    </button>
+                    <div class="brush-control">
+                        <label for="brushSize">Brush</label>
+                        <input type="range" id="brushSize" min="8" max="35" value="20" class="range-slider">
+                        <span id="brushSizeLabel" class="brush-label">20px</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right: Predictions -->
+            <section class="card prediction-section">
+                <div class="card-header">
+                    <h2>Prediction</h2>
+                    <p class="card-subtitle">Real-time neural network output</p>
+                </div>
+
+                <div class="predicted-digit-display">
+                    <div class="predicted-digit-value" id="predictedDigit">?</div>
+                    <div class="predicted-digit-label">Predicted Number</div>
+                    <div class="predicted-confidence" id="predictedConfidence">—</div>
+                </div>
+
+                <p class="prob-bars-note">Probabilities for left-most digit</p>
+                <div class="probability-bars" id="probabilityBars">
+                    <div class="prob-row" data-digit="0"><span class="prob-label">0</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="1"><span class="prob-label">1</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="2"><span class="prob-label">2</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="3"><span class="prob-label">3</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="4"><span class="prob-label">4</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="5"><span class="prob-label">5</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="6"><span class="prob-label">6</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="7"><span class="prob-label">7</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="8"><span class="prob-label">8</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                    <div class="prob-row" data-digit="9"><span class="prob-label">9</span><div class="prob-track"><div class="prob-fill"></div></div><span class="prob-value">0%</span></div>
+                </div>
+
+                <!-- Preview of preprocessed image -->
+                <div class="preview-section">
+                    <span class="preview-label">Model Input (28×28)</span>
+                    <canvas id="previewCanvas" width="28" height="28"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <!-- Training Section -->
+        <section class="card training-section">
+            <div class="training-header">
+                <div>
+                    <h2>Model Training</h2>
+                    <p class="card-subtitle">Train a CNN on 65,000 MNIST handwritten digit samples</p>
+                </div>
+                <button class="btn btn-primary" id="trainBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Train Model
+                </button>
+            </div>
+
+            <div class="training-config">
+                <div class="config-item">
+                    <label for="epochsInput">Epochs</label>
+                    <select id="epochsInput" class="select-input">
+                        <option value="3">3 (Fast)</option>
+                        <option value="5" selected>5 (Recommended)</option>
+                        <option value="10">10 (Better)</option>
+                        <option value="15">15 (Best)</option>
+                    </select>
+                </div>
+                <div class="config-item">
+                    <label for="batchInput">Batch Size</label>
+                    <select id="batchInput" class="select-input">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="256">256</option>
+                        <option value="512">512</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="training-progress" id="trainingProgress" style="display:none;">
+                <div class="progress-header">
+                    <span id="progressLabel">Initializing...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <div class="training-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Loss</span>
+                        <span class="stat-value" id="statLoss">—</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Accuracy</span>
+                        <span class="stat-value" id="statAccuracy">—</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Epoch</span>
+                        <span class="stat-value" id="statEpoch">—</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Test Accuracy</span>
+                        <span class="stat-value" id="statTestAcc">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Architecture Info -->
+            <details class="arch-details">
+                <summary>CNN Architecture</summary>
+                <div class="arch-content">
+                    <div class="arch-layer">
+                        <span class="layer-name">Input</span>
+                        <span class="layer-info">28 × 28 × 1 (Grayscale)</span>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <span class="layer-name">Conv2D</span>
+                        <span class="layer-info">8 filters, 5×5, ReLU</span>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <span class="layer-name">MaxPool2D</span>
+                        <span class="layer-info">2×2 stride 2</span>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <span class="layer-name">Conv2D</span>
+                        <span class="layer-info">16 filters, 5×5, ReLU</span>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <span class="layer-name">MaxPool2D</span>
+                        <span class="layer-info">2×2 stride 2</span>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <span class="layer-name">Flatten + Dense</span>
+                        <span class="layer-info">10 units, Softmax</span>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Built with <strong>TensorFlow.js</strong> · CNN trained on <strong>MNIST</strong> dataset · Runs entirely in your browser</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
